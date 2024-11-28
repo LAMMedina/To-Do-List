@@ -2,10 +2,14 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet'); // Importamos helmet
+const NodeCache = require('node-cache'); // Importamos node-cache para cachear las tareas
 require('dotenv').config(); // Agrega esto para cargar el archivo .env
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Crear la instancia de caché con TTL de 60 segundos
+const cache = new NodeCache({ stdTTL: 60 })
 
 // Middleware
 app.use(cors());
@@ -39,6 +43,7 @@ mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTop
 // Middleware para cachear las tareas
 const cacheMiddleware = (req, res, next) => {
   const key = req.originalUrl; // clave unica basada en la url de la solicitud
+  const cachedResponse = cache.get(key); // obtener la respuesta cacheada si existe
 
   if (cachedResponse) {
     console.log('Respuesta cacheada para:', key);
@@ -48,6 +53,7 @@ const cacheMiddleware = (req, res, next) => {
   console.log('No hay respuesta cacheada para:', key);
   res.sendResponse = res.json;
   res.json = (body) => {
+    cache.set(key, body); // Almacenar la respuesta en la caché
     res.sendResponse(body);
   };
 
