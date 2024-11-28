@@ -1,7 +1,10 @@
 const express = require('express')
 const router = express.Router()
 const Task = require('../models/Task')
+const NodeCache = require('node-cache')
 
+// Reutilizamos la instancia de node-cache (asegúrate de importar el archivo adecuado si está en otro lugar)
+const cache = new NodeCache()
 
 // Obtener todas las tareas
 router.get('/', async (req, res) => {
@@ -23,6 +26,7 @@ router.post('/', async (req, res) => {
 
   try {
     const newTask = await task.save()
+    cache.del('/api/tasks') // Invalida la caché de todas las tareas
     res.status(201).json(newTask)
   } catch (err) {
     res.status(400).json({ message: err.message })
@@ -49,6 +53,8 @@ router.patch('/:id', async (req, res) => {
     task.updatedAt = Date.now()
 
     const updatedTask = await task.save()
+    cache.del('/api/tasks') // Invalida la caché de todas las tareas
+    cache.del(`/api/tasks/${req.params.id}`) // Invalida la caché específica de la tarea
     res.json(updatedTask)
   } catch (err) {
     res.status(400).json({ message: err.message })
@@ -63,6 +69,8 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ message: 'Task not found' })
     }
     await Task.findByIdAndDelete(req.params.id)
+    cache.del('/api/tasks') // Invalida la caché de todas las tareas
+    cache.del(`/api/tasks/${req.params.id}`) // Invalida la caché específica de la tarea
     res.json({ message: 'Task deleted successfully' })
   } catch (err) {
     console.error(err)
